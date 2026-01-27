@@ -8,8 +8,18 @@ const maxDataPoints = 20;
 // System variables
 let weatherLevel = 0;
 let renewablesEnabled = false;
-const baseDemand = 12000; // MW
+let purchasePowerEnabled = false;
+const baseDemand = 4500; // MW - Updated to match server
 let currentSupply = 0;
+
+// AI automation variables
+let aiEnabled = false;
+let aiInterval = null;
+const AI_DURATION = 30000; // 30 seconds
+const AI_TARGET_WEATHER = 47; // Target weather level
+const AI_PRICE_THRESHOLD = 15.0; // Try to keep price below this (¢/kWh)
+let aiStartTime = null;
+let aiStartWeather = 0;
 
 // Initialize charts
 const voltageChart = new Chart(document.getElementById('voltageChart'), {
@@ -114,17 +124,18 @@ const southernStates = [
   'AL', 'AR', 'FL', 'GA', 'KY', 'LA', 'MS', 'NC', 'OK', 'SC', 'TN', 'TX', 'VA', 'WV'
 ];
 
-function updateEIAData(weatherLevel, renewablesEnabled) {
+function updateEIAData(weatherLevel, renewablesEnabled, purchasePowerEnabled) {
   // Base fake data
   const basePrice = 12.5; // ¢/kWh
   const totalRevenue = 25300; // $M
   const totalSales = 180500; // MWh
   const totalCustomers = 45200; // Thousands
   
-  // Adjust price based on weather and renewables
+  // Adjust price based on weather, renewables, and purchased power
   const weatherIncrease = (weatherLevel / 100) * 5; // Increase by up to 5¢ with max weather
   const renewableDecrease = renewablesEnabled ? 2.0 : 0; // Decrease by 2¢ with renewables
-  const adjustedPrice = Math.max(5, basePrice + weatherIncrease - renewableDecrease); // Min 5¢
+  const purchasePowerIncrease = purchasePowerEnabled ? 3.5 : 0; // Increase by 3.5¢ with purchased power (2x cost)
+  const adjustedPrice = Math.max(5, basePrice + weatherIncrease - renewableDecrease + purchasePowerIncrease); // Min 5¢
   
   // Calculate outage risk for EIA data
   const baseOutageRisk = (weatherLevel / 2) - (renewablesEnabled ? 10 : 0);
@@ -139,7 +150,7 @@ function updateEIAData(weatherLevel, renewablesEnabled) {
 }
 
 // Load initial EIA data on page load
-updateEIAData(0, false);
+updateEIAData(0, false, false);
 
 // Listen for telemetry data
 socket.on('telemetry', (data) => {
@@ -151,12 +162,13 @@ socket.on('telemetry', (data) => {
 socket.on('systemStatus', (status) => {
   weatherLevel = status.weatherLevel;
   renewablesEnabled = status.renewablesEnabled;
+  purchasePowerEnabled = status.purchasePowerEnabled || false;
   document.getElementById('weather-slider').value = weatherLevel;
   document.getElementById('weather-value').textContent = weatherLevel;
   document.getElementById('renewables-toggle').checked = renewablesEnabled;
-  document.getElementById('purchase-power-toggle').checked = status.purchasePowerEnabled || false;
+  document.getElementById('purchase-power-toggle').checked = purchasePowerEnabled;
   updateStorms(); // Update storm markers
-  updateEIAData(weatherLevel, renewablesEnabled); // Update EIA data based on weather and renewables
+  updateEIAData(weatherLevel, renewablesEnabled, purchasePowerEnabled); // Update EIA data based on all controls
   
   // Update cost and outage info
   if (status.totalCost !== undefined) {
@@ -201,6 +213,9 @@ socket.on('systemMetrics', (metrics) => {
     balanceStatus.textContent = '(Deficit)';
     balanceStatus.style.color = '#dc3545';
   }
+  
+  // Update EIA data dynamically
+  updateEIAData(weatherLevel, renewablesEnabled, purchasePowerEnabled);
 });
 
 // Initialize controls
@@ -221,6 +236,86 @@ document.getElementById('dark-mode-toggle').addEventListener('change', (e) => {
 document.getElementById('purchase-power-toggle').addEventListener('change', (e) => {
   socket.emit('togglePurchasePower', e.target.checked);
 });
+
+document.getElementById('ai-toggle').addEventListener('change', (e) => {
+  aiEnabled = e.target.checked;
+  if (aiEnabled) {
+    startAIAutomation();
+  } else {
+    stopAIAutomation();
+  }
+});
+
+function startAIAutomation() {
+  aiStartTime = Date.now();
+  aiStartWeather = weatherLevel;
+  
+  // Clear any existing interval
+  if (aiInterval) {
+    clearInterval(aiInterval);
+  }
+  
+  // Update every 100ms for smooth progression
+  aiInterval = setInterval(() => {
+    const elapsed = Date.now() - aiStartTime;
+    const progress = Math.min(1, elapsed / AI_DURATION);
+    
+    // Calculate target weather based on progress
+    const targetWeather = Math.round(aiStartWeather + (AI_TARGET_WEATHER - aiStartWeather) * progress);
+    
+    // Update weather if different from current
+    if (targetWeather !== weatherLevel) {
+      document.getElementById('weather-slider').value = targetWeather;
+      document.getElementById('weather-value').textContent = targetWeather;
+      socket.emit('updateWeather', targetWeather);
+    }
+    
+    // AI decision making for cost optimization
+    makeAIDecisions();
+    
+    // Stop when target reached
+    if (progress >= 1) {
+      clearInterval(aiInterval);
+      aiInterval = null;
+    }
+  }, 100);
+}
+
+function stopAIAutomation() {
+  if (aiInterval) {
+    clearInterval(aiInterval);
+    aiInterval = null;
+  }
+}
+
+function makeAIDecisions() {
+  // Calculate current estimated price
+  const basePrice = 12.5;
+  const weatherIncrease = (weatherLevel / 100) * 5;
+  const renewableDecrease = renewablesEnabled ? 2.0 : 0;
+  const purchasePowerIncrease = purchasePowerEnabled ? 3.5 : 0;
+  const estimatedPrice = basePrice + weatherIncrease - renewableDecrease + purchasePowerIncrease;
+  
+  // AI Strategy: Enable renewables first (cheaper), then purchase power if needed
+  
+  // Enable renewables if weather > 15% and not already enabled
+  if (weatherLevel > 15 && !renewablesEnabled) {
+    document.getElementById('renewables-toggle').checked = true;
+    socket.emit('toggleRenewables', true);
+  }
+  
+  // Enable purchase power if price is high and deficit exists
+  if (estimatedPrice > AI_PRICE_THRESHOLD && weatherLevel > 30 && !purchasePowerEnabled) {
+    document.getElementById('purchase-power-toggle').checked = true;
+    socket.emit('togglePurchasePower', true);
+  }
+  
+  // Disable purchase power if price is low and renewables are sufficient
+  if (estimatedPrice < (AI_PRICE_THRESHOLD - 2) && purchasePowerEnabled && renewablesEnabled) {
+    document.getElementById('purchase-power-toggle').checked = false;
+    socket.emit('togglePurchasePower', false);
+  }
+}
 
 function updateSensorCard(data) {
   const card = document.getElementById(data.sensorId);

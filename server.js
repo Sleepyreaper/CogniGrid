@@ -17,7 +17,7 @@ let purchasePowerEnabled = false;
 const TRADITIONAL_COST_PER_MW = 45; // $/MW
 const RENEWABLE_COST_PER_MW = 15; // $/MW
 const MICROCLIMATE_BASE_COST = 0.12; // $/kWh base rate
-const BASE_DEMAND = 12000; // MW
+const BASE_DEMAND = 4500; // MW - Lower base to create surplus at 0% weather
 
 // Outage variables
 let outageProbability = 0; // 0-100%
