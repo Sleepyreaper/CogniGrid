@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electrical Grid Operations Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Electrical Grid Operations Dashboard</h1>
+    <p>Real-time monitoring of IoT sensor telemetry</p>
+  </header>
+
+  <main>
+    <div class="dashboard">
+      <div class="controls">
+        <div class="control-group">
+          <label for="weather-slider">Extreme Weather Severity: <span id="weather-value">0</span>%</label>
+          <input type="range" id="weather-slider" min="0" max="100" value="0">
+        </div>
+        <div class="control-group">
+          <label for="renewables-toggle">Renewable Energy Sources</label>
+          <input type="checkbox" id="renewables-toggle">
+        </div>
+        <div class="system-info">
+          <div class="info-row">
+            <p>Total Power Supply: <span id="total-supply">-- MW</span></p>
+            <p>Power Demand: <span id="demand">-- MW</span></p>
+            <p>Balance: <span id="balance">-- MW</span> <span id="balance-status"></span></p>
+          </div>
+          <div class="info-row">
+            <p>Generation Cost: <span id="total-cost">-- $/hr</span></p>
+            <p>Microclimate Cost: <span id="microclimate-cost">-- $/kWh</span></p>
+            <p>Outage Risk: <span id="outage-probability">-- %</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sensor-card" id="sensor-1">
+          <h3>Substation A</h3>
+          <p class="sensor-type">Voltage</p>
+          <p class="sensor-value">-- kV</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+        <div class="sensor-card" id="sensor-2">
+          <h3>Substation B</h3>
+          <p class="sensor-type">Current</p>
+          <p class="sensor-value">-- A</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+        <div class="sensor-card" id="sensor-3">
+          <h3>Transformer C</h3>
+          <p class="sensor-type">Power</p>
+          <p class="sensor-value">-- MW</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+        <div class="sensor-card" id="sensor-4">
+          <h3>Line D</h3>
+          <p class="sensor-type">Frequency</p>
+          <p class="sensor-value">-- Hz</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+        <div class="sensor-card" id="sensor-5">
+          <h3>Generator E</h3>
+          <p class="sensor-type">Temperature</p>
+          <p class="sensor-value">-- °C</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+        <div class="sensor-card renewable" id="sensor-6">
+          <h3>Wind Farm F</h3>
+          <p class="sensor-type">Power</p>
+          <p class="sensor-value">-- MW</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+        <div class="sensor-card renewable" id="sensor-7">
+          <h3>Solar Panel G</h3>
+          <p class="sensor-type">Power</p>
+          <p class="sensor-value">-- MW</p>
+          <p class="sensor-status">Status: --</p>
+          <p class="sensor-time">--</p>
+        </div>
+      </div>
+
+      <div class="eia-data-card">
+        <h3>Southern States Power Data</h3>
+        <div class="eia-metrics">
+          <div class="metric">
+            <span class="metric-label">Average Price:</span>
+            <span class="metric-value" id="avg-price">-- ¢/kWh</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Total Revenue:</span>
+            <span class="metric-value" id="total-revenue">-- $M</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Total Sales:</span>
+            <span class="metric-value" id="total-sales">-- MWh</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Total Customers:</span>
+            <span class="metric-value" id="total-customers">-- M</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Outage Risk:</span>
+            <span class="metric-value" id="eia-outage-risk">-- %</span>
+          </div>
+        </div>
+        <p class="data-source">Simulated Data (Southern States)</p>
+      </div>
+
+      <div class="map-section">
+        <h2>Weather Map - United States</h2>
+        <div id="map" class="map-container"></div>
+      </div>
+
+      <div class="charts">
+        <div class="chart-container">
+          <canvas id="voltageChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="powerChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
