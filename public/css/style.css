@@ -1,5 +1,33 @@
 /* Operations Dashboard Styles */
 
+/* AI Button Styles */
+.ai-button {
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+  color: #fff;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.ai-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(220, 53, 69, 0.6);
+}
+
+.ai-button:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.ai-button.active {
+  background: linear-gradient(135deg, #c82333 0%, #8f1f2a 100%);
+}
+
 /* Digital Twin Button */
 .twin-button {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);

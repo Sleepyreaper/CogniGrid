@@ -304,14 +304,33 @@ document.getElementById('purchase-power-toggle').addEventListener('change', (e) 
   socket.emit('togglePurchasePower', e.target.checked);
 });
 
-document.getElementById('ai-toggle').addEventListener('change', (e) => {
-  aiEnabled = e.target.checked;
-  if (aiEnabled) {
-    startAIAutomation();
-  } else {
-    stopAIAutomation();
-  }
-});
+// AI Toggle (checkbox, if present) for backward compatibility
+const aiToggleCheckbox = document.getElementById('ai-toggle');
+if (aiToggleCheckbox) {
+  aiToggleCheckbox.addEventListener('change', (e) => {
+    aiEnabled = e.target.checked;
+    if (aiEnabled) {
+      startAIAutomation();
+    } else {
+      stopAIAutomation();
+    }
+  });
+}
+
+// AI Button toggle
+const aiToggleBtn = document.getElementById('ai-toggle-btn');
+if (aiToggleBtn) {
+  aiToggleBtn.addEventListener('click', () => {
+    aiEnabled = !aiEnabled;
+    if (aiEnabled) {
+      startAIAutomation();
+    } else {
+      stopAIAutomation();
+    }
+    aiToggleBtn.textContent = aiEnabled ? 'Disable CogniGrid AI Powered by Microsoft Azure' : 'Enable CogniGrid AI Powered by Microsoft Azure';
+    aiToggleBtn.classList.toggle('active', aiEnabled);
+  });
+}
 
 // Digital Twin Modal Controls
 const digitalTwinModal = document.getElementById('digital-twin-modal');
