@@ -200,6 +200,10 @@ document.getElementById('renewables-toggle').addEventListener('change', (e) => {
   socket.emit('toggleRenewables', e.target.checked);
 });
 
+document.getElementById('dark-mode-toggle').addEventListener('change', (e) => {
+  document.body.classList.toggle('dark', e.target.checked);
+});
+
 function updateSensorCard(data) {
   const card = document.getElementById(data.sensorId);
   if (card) {
