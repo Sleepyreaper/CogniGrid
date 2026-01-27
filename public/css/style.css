@@ -112,7 +112,7 @@ body.dark #weather-slider::-webkit-slider-thumb {
   background: #4dabf7;
 }
 
-#renewables-toggle, #dark-mode-toggle {
+#renewables-toggle, #dark-mode-toggle, #purchase-power-toggle {
   width: 50px;
   height: 25px;
   background: #dee2e6;
@@ -125,15 +125,15 @@ body.dark #weather-slider::-webkit-slider-thumb {
   transition: background-color 0.3s ease;
 }
 
-#renewables-toggle:checked, #dark-mode-toggle:checked {
+#renewables-toggle:checked, #dark-mode-toggle:checked, #purchase-power-toggle:checked {
   background: #007bff;
 }
 
-body.dark #renewables-toggle:checked, body.dark #dark-mode-toggle:checked {
+body.dark #renewables-toggle:checked, body.dark #dark-mode-toggle:checked, body.dark #purchase-power-toggle:checked {
   background: #4dabf7;
 }
 
-#renewables-toggle:before, #dark-mode-toggle:before {
+#renewables-toggle:before, #dark-mode-toggle:before, #purchase-power-toggle:before {
   content: '';
   position: absolute;
   top: 2px;
@@ -149,7 +149,7 @@ body.dark #renewables-toggle:before, body.dark #dark-mode-toggle:before {
   background: #e0e0e0;
 }
 
-#renewables-toggle:checked:before, #dark-mode-toggle:checked:before {
+#renewables-toggle:checked:before, #dark-mode-toggle:checked:before, #purchase-power-toggle:checked:before {
   transform: translateX(25px);
 }
 

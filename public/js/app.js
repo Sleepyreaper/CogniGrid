@@ -154,38 +154,52 @@ socket.on('systemStatus', (status) => {
   document.getElementById('weather-slider').value = weatherLevel;
   document.getElementById('weather-value').textContent = weatherLevel;
   document.getElementById('renewables-toggle').checked = renewablesEnabled;
+  document.getElementById('purchase-power-toggle').checked = status.purchasePowerEnabled || false;
   updateStorms(); // Update storm markers
   updateEIAData(weatherLevel, renewablesEnabled); // Update EIA data based on weather and renewables
   
   // Update cost and outage info
   if (status.totalCost !== undefined) {
+    document.getElementById('total-supply').textContent = status.totalPower;
+    document.getElementById('demand').textContent = status.demand;
+    document.getElementById('purchased-power').textContent = status.purchasedPower || 0;
+    document.getElementById('balance').textContent = status.totalPower - status.demand;
     document.getElementById('total-cost').textContent = status.totalCost;
     document.getElementById('microclimate-cost').textContent = status.microclimateCost;
     document.getElementById('outage-probability').textContent = status.outageProbability;
+    
+    // Update balance status
+    const balance = status.totalPower - status.demand;
+    const balanceStatus = document.getElementById('balance-status');
+    if (balance >= 0) {
+      balanceStatus.textContent = '(Surplus)';
+      balanceStatus.style.color = '#28a745';
+    } else {
+      balanceStatus.textContent = '(Deficit)';
+      balanceStatus.style.color = '#dc3545';
+    }
   }
 });
 
 // Listen for periodic system metrics updates
 socket.on('systemMetrics', (metrics) => {
   document.getElementById('total-supply').textContent = metrics.totalPower;
+  document.getElementById('demand').textContent = metrics.demand;
+  document.getElementById('purchased-power').textContent = metrics.purchasedPower || 0;
+  document.getElementById('balance').textContent = metrics.totalPower - metrics.demand;
   document.getElementById('total-cost').textContent = metrics.totalCost;
   document.getElementById('microclimate-cost').textContent = metrics.microclimateCost;
   document.getElementById('outage-probability').textContent = metrics.outageProbability;
   
-  // Calculate demand and balance
-  const demand = baseDemand * (1 + weatherLevel / 200);
-  const balance = metrics.totalPower - demand;
-  
-  document.getElementById('demand').textContent = demand.toFixed(2);
-  document.getElementById('balance').textContent = Math.abs(balance).toFixed(2);
-
+  // Update balance status
+  const balance = metrics.totalPower - metrics.demand;
   const balanceStatus = document.getElementById('balance-status');
   if (balance >= 0) {
     balanceStatus.textContent = '(Surplus)';
-    balanceStatus.style.color = '#27ae60';
+    balanceStatus.style.color = '#28a745';
   } else {
     balanceStatus.textContent = '(Deficit)';
-    balanceStatus.style.color = '#e74c3c';
+    balanceStatus.style.color = '#dc3545';
   }
 });
 
@@ -202,6 +216,10 @@ document.getElementById('renewables-toggle').addEventListener('change', (e) => {
 
 document.getElementById('dark-mode-toggle').addEventListener('change', (e) => {
   document.body.classList.toggle('dark', e.target.checked);
+});
+
+document.getElementById('purchase-power-toggle').addEventListener('change', (e) => {
+  socket.emit('togglePurchasePower', e.target.checked);
 });
 
 function updateSensorCard(data) {

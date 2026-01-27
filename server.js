@@ -11,11 +11,13 @@ const PORT = process.env.PORT || 3000;
 // Global simulation variables
 let weatherLevel = 0; // 0-100, severity of extreme weather
 let renewablesEnabled = false;
+let purchasePowerEnabled = false;
 
 // Cost constants (per MW per hour)
 const TRADITIONAL_COST_PER_MW = 45; // $/MW
 const RENEWABLE_COST_PER_MW = 15; // $/MW
 const MICROCLIMATE_BASE_COST = 0.12; // $/kWh base rate
+const BASE_DEMAND = 12000; // MW
 
 // Outage variables
 let outageProbability = 0; // 0-100%
@@ -69,10 +71,25 @@ function calculateSystemMetrics() {
     }
   });
 
+  // Calculate demand (increases with weather)
+  const demand = BASE_DEMAND * (1 + weatherLevel / 200);
+  const deficit = Math.max(0, demand - totalPower);
+
+  let purchasedPower = 0;
+  let purchasedCost = 0;
+
+  if (purchasePowerEnabled && deficit > 0) {
+    // Cover 50%-98% of deficit
+    const coverageRatio = 0.5 + Math.random() * 0.48;
+    purchasedPower = deficit * coverageRatio;
+    purchasedCost = purchasedPower * TRADITIONAL_COST_PER_MW * 2 / 1000; // 2x cost
+    totalPower += purchasedPower;
+  }
+
   // Calculate costs
   const traditionalCost = totalTraditionalPower * TRADITIONAL_COST_PER_MW / 1000; // Convert to $/hour
   const renewableCost = totalRenewablePower * RENEWABLE_COST_PER_MW / 1000;
-  const totalCost = traditionalCost + renewableCost;
+  const totalCost = traditionalCost + renewableCost + purchasedCost;
 
   // Calculate microclimate cost (cost per kWh)
   const microclimateCost = MICROCLIMATE_BASE_COST * (1 + weatherLevel / 500) * (totalTraditionalPower / (totalTraditionalPower + totalRenewablePower + 1));
@@ -81,11 +98,14 @@ function calculateSystemMetrics() {
   outageProbability = Math.min(100, Math.max(0, (weatherLevel / 2) - (renewablesEnabled ? 15 : 0)));
 
   return {
+    demand: Math.round(demand),
     totalTraditionalPower: Math.round(totalTraditionalPower),
     totalRenewablePower: Math.round(totalRenewablePower),
     totalPower: Math.round(totalPower),
+    purchasedPower: Math.round(purchasedPower),
     traditionalCost: Math.round(traditionalCost * 100) / 100,
     renewableCost: Math.round(renewableCost * 100) / 100,
+    purchasedCost: Math.round(purchasedCost * 100) / 100,
     totalCost: Math.round(totalCost * 100) / 100,
     microclimateCost: Math.round(microclimateCost * 10000) / 10000,
     outageProbability: Math.round(outageProbability * 100) / 100
@@ -146,20 +166,27 @@ io.on('connection', (socket) => {
 
   // Send initial system status and metrics
   const metrics = calculateSystemMetrics();
-  socket.emit('systemStatus', { weatherLevel, renewablesEnabled, ...metrics });
+  socket.emit('systemStatus', { weatherLevel, renewablesEnabled, purchasePowerEnabled, ...metrics });
 
   // Listen for weather updates
   socket.on('updateWeather', (level) => {
     weatherLevel = Math.max(0, Math.min(100, level));
     const metrics = calculateSystemMetrics();
-    io.emit('systemStatus', { weatherLevel, renewablesEnabled, ...metrics });
+    io.emit('systemStatus', { weatherLevel, renewablesEnabled, purchasePowerEnabled, ...metrics });
   });
 
   // Listen for renewables toggle
   socket.on('toggleRenewables', (enabled) => {
     renewablesEnabled = enabled;
     const metrics = calculateSystemMetrics();
-    io.emit('systemStatus', { weatherLevel, renewablesEnabled, ...metrics });
+    io.emit('systemStatus', { weatherLevel, renewablesEnabled, purchasePowerEnabled, ...metrics });
+  });
+
+  // Listen for purchase power toggle
+  socket.on('togglePurchasePower', (enabled) => {
+    purchasePowerEnabled = enabled;
+    const metrics = calculateSystemMetrics();
+    io.emit('systemStatus', { weatherLevel, renewablesEnabled, purchasePowerEnabled, ...metrics });
   });
 
   socket.on('disconnect', () => {
