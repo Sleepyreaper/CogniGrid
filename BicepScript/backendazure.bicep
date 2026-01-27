@@ -4,8 +4,8 @@
 @description('The name of the App Service resource')
 param appServiceName string = 'cognigrid-${uniqueString(resourceGroup().id)}'
 
-@description('Location for all resources')
-param location string = resourceGroup().location
+@description('Location for all resources (default Sweden East)')
+param location string = 'swedeneast'
 
 @description('The pricing tier for the App Service Plan')
 @allowed([
@@ -18,6 +18,24 @@ param appServicePlanSku string = 'B1'
 
 @description('Node.js version')
 param nodeVersion string = '18-lts'
+
+@description('Azure AI Foundry (Cognitive Services) account name')
+param aiAccountName string = 'cognigrid-ai-${uniqueString(resourceGroup().id)}'
+
+@description('Azure AI account SKU name (OpenAI uses S0)')
+@allowed([
+  'S0'
+])
+param aiSkuName string = 'S0'
+
+@description('Azure AI account kind')
+@allowed([
+  'OpenAI'
+])
+param aiKind string = 'OpenAI'
+
+@description('Azure AI account location (defaults to deployment location)')
+param aiLocation string = location
 
 @description('PostgreSQL administrator login name')
 param postgresAdminLogin string = 'cognigridadmin'
@@ -170,6 +188,24 @@ resource apimApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-01
   }
 }
 
+// Azure AI Foundry (Azure OpenAI) Account
+resource aiAccount 'Microsoft.CognitiveServices/accounts@2025-09-01' = {
+  name: aiAccountName
+  location: aiLocation
+  kind: aiKind
+  sku: {
+    name: aiSkuName
+    tier: 'Standard'
+  }
+  properties: {
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow'
+    }
+    allowProjectManagement: true
+  }
+}
+
 // App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   name: '${appServiceName}-plan'
@@ -227,6 +263,14 @@ resource webApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'DATABASE_SSL'
           value: 'true'
+        }
+        {
+          name: 'AZURE_AI_ENDPOINT'
+          value: aiAccount.properties.endpoint
+        }
+        {
+          name: 'AZURE_AI_KEY'
+          value: aiAccount.listKeys().key1
         }
       ]
       alwaysOn: appServicePlanSku != 'F1'  // Free tier doesn't support always on
