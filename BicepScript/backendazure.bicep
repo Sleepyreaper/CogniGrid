@@ -53,36 +53,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-pr
   name: '${appServiceName}-postgres'
   location: location
   sku: {
-    na  {
-          name: 'DATABASE_HOST'
-          value: postgresServer.properties.fullyQualifiedDomainName
-        }
-        {
-          name: 'DATABASE_NAME'
-          value: postgresDatabaseName
-        }
-        {
-          name: 'DATABASE_USER'
-          value: postgresAdminLogin
-        }
-output apimGatewayUrl string = apimService.properties.gatewayUrl
-output apimDeveloperPortalUrl string = apimService.properties.developerPortalUrl
-output postgresServerFqdn string = postgresServer.properties.fullyQualifiedDomainName
-output postgresDatabaseName string = postgresDatabaseName
-output deploymentInstructions string = 'Access your app via APIM at: ${apimService.properties.gatewayUrl}'
-        {
-          name: 'DATABASE_PASSWORD'
-          value: postgresAdminPassword
-        }
-        {
-          name: 'DATABASE_PORT'
-          value: '5432'
-        }
-        {
-          name: 'DATABASE_SSL'
-          value: 'true'
-        }
-      me: 'Standard_B1ms'
+    name: 'Standard_B1ms'
     tier: 'Burstable'
   }
   properties: {
@@ -231,6 +202,30 @@ resource webApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'true'
+        }
+        {
+          name: 'DATABASE_HOST'
+          value: postgresServer.properties.fullyQualifiedDomainName
+        }
+        {
+          name: 'DATABASE_NAME'
+          value: postgresDatabaseName
+        }
+        {
+          name: 'DATABASE_USER'
+          value: postgresAdminLogin
+        }
+        {
+          name: 'DATABASE_PASSWORD'
+          value: postgresAdminPassword
+        }
+        {
+          name: 'DATABASE_PORT'
+          value: '5432'
+        }
+        {
+          name: 'DATABASE_SSL'
           value: 'true'
         }
       ]
