@@ -37,6 +37,42 @@ param aiKind string = 'OpenAI'
 @description('Azure AI account location (defaults to deployment location)')
 param aiLocation string = location
 
+@description('IoT Hub name')
+param iotHubName string = 'cognigrid-iothub-${uniqueString(resourceGroup().id)}'
+
+@description('IoT Hub SKU name')
+@allowed([
+  'F1'
+  'S1'
+  'S2'
+  'S3'
+])
+param iotHubSkuName string = 'S1'
+
+@description('IoT Hub units (capacity)')
+param iotHubUnits int = 1
+
+@description('IoT Hub partitions for built-in endpoint')
+param iotHubPartitions int = 4
+
+@description('IoT Hub retention days for built-in endpoint')
+param iotHubRetentionDays int = 1
+
+@description('Stream Analytics job name')
+param streamJobName string = 'cognigrid-sa-${uniqueString(resourceGroup().id)}'
+
+@description('Stream Analytics streaming units')
+param asaStreamingUnits int = 1
+
+@description('IoT Hub consumer group name for ASA input')
+param iotConsumerGroupName string = 'asa-consumer'
+
+@description('Storage account name for ASA outputs (lowercase, 3-24 chars)')
+param saName string = 'cognigridst${toLower(uniqueString(resourceGroup().id))}'
+
+@description('Blob container name for ASA outputs')
+param saContainerName string = 'stream'
+
 @description('PostgreSQL administrator login name')
 param postgresAdminLogin string = 'cognigridadmin'
 
@@ -206,6 +242,137 @@ resource aiAccount 'Microsoft.CognitiveServices/accounts@2025-09-01' = {
   }
 }
 
+// IoT Hub
+resource iotHub 'Microsoft.Devices/IotHubs@2023-06-30' = {
+  name: iotHubName
+  location: location
+  sku: {
+    name: iotHubSkuName
+    capacity: iotHubUnits
+  }
+  properties: {
+    publicNetworkAccess: 'Enabled'
+    eventHubEndpoints: {
+      events: {
+        partitionCount: iotHubPartitions
+        retentionTimeInDays: iotHubRetentionDays
+      }
+    }
+    authorizationPolicies: [
+      {
+        keyName: 'service'
+        rights: 'ServiceConnect'
+      }
+    ]
+  }
+}
+
+// Existing child to retrieve keys for the 'service' policy
+resource iotHubServiceKey 'Microsoft.Devices/IotHubs/IotHubKeys@2023-06-30' existing = {
+  parent: iotHub
+  name: 'service'
+}
+
+// Build IoT Hub service connection string
+var iotHubConnectionString = 'HostName=${iotHub.properties.hostName};SharedAccessKeyName=service;SharedAccessKey=${iotHubServiceKey.listKeys().primaryKey}'
+
+// Storage Account for Stream Analytics output
+resource sa 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: saName
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+    allowBlobPublicAccess: false
+    minimumTlsVersion: 'TLS1_2'
+  }
+}
+
+// Blob container for ASA output
+resource saBlobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  name: '${sa.name}/default/${saContainerName}'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+// Stream Analytics Job
+resource streamJob 'Microsoft.StreamAnalytics/streamingjobs@2020-03-01' = {
+  name: streamJobName
+  location: location
+  properties: {
+    sku: {
+      name: 'Standard'
+    }
+    compatibilityLevel: '1.2'
+    dataLocale: 'en-US'
+    outputErrorPolicy: 'Drop'
+    eventsOutOfOrderPolicy: 'Adjust'
+    eventsOutOfOrderMaxDelayInSeconds: 0
+    transformation: {
+      name: 'DefaultTransformation'
+      properties: {
+        streamingUnits: asaStreamingUnits
+        query: 'SELECT * INTO [blobOutput] FROM [iotInput]'
+      }
+    }
+    inputs: [
+      {
+        name: 'iotInput'
+        properties: {
+          type: 'Stream'
+          serialization: {
+            type: 'Json'
+            properties: {
+              encoding: 'UTF8'
+            }
+          }
+          datasource: {
+            type: 'Microsoft.Devices/IotHubs'
+            properties: {
+              iotHubNamespace: iotHub.properties.hostName
+              sharedAccessPolicyName: 'service'
+              sharedAccessPolicyKey: iotHubServiceKey.listKeys().primaryKey
+              endpoint: 'messages/events'
+              consumerGroupName: iotConsumerGroupName
+            }
+          }
+        }
+      }
+    ]
+    outputs: [
+      {
+        name: 'blobOutput'
+        properties: {
+          serialization: {
+            type: 'Json'
+            properties: {
+              encoding: 'UTF8'
+              format: 'LineSeparated'
+            }
+          }
+          datasource: {
+            type: 'Microsoft.Storage/Blob'
+            properties: {
+              container: saContainerName
+              pathPattern: 'asa/{date}/{time}'
+              storageAccounts: [
+                {
+                  accountName: sa.name
+                  accountKey: sa.listKeys().keys[0].value
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+
 // App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   name: '${appServiceName}-plan'
@@ -272,6 +439,14 @@ resource webApp 'Microsoft.Web/sites@2022-09-01' = {
           name: 'AZURE_AI_KEY'
           value: aiAccount.listKeys().key1
         }
+        {
+          name: 'IOT_HUB_HOSTNAME'
+          value: iotHub.properties.hostName
+        }
+        {
+          name: 'IOT_HUB_SERVICE_CONNECTION_STRING'
+          value: iotHubConnectionString
+        }
       ]
       alwaysOn: appServicePlanSku != 'F1'  // Free tier doesn't support always on
       webSocketsEnabled: true  // Required for Socket.io
@@ -284,3 +459,5 @@ resource webApp 'Microsoft.Web/sites@2022-09-01' = {
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output webAppName string = webApp.name
 output resourceGroupName string = resourceGroup().name
+output iotHubHostName string = iotHub.properties.hostName
+output iotHubServiceConnectionString string = iotHubConnectionString
