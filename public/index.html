@@ -39,6 +39,9 @@
           <label for="ai-toggle">Enable AI Automation</label>
           <input type="checkbox" id="ai-toggle">
         </div>
+        <div class="control-group">
+          <button id="digital-twin-btn" class="twin-button">🔍 Digital Twin Manager</button>
+        </div>
         <div class="system-info">
           <div class="info-row">
             <p>Total Power Supply: <span id="total-supply">-- MW</span></p>
@@ -144,6 +147,70 @@
         </div>
         <div class="chart-container">
           <canvas id="powerChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Digital Twin Modal -->
+    <div id="digital-twin-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>🌐 Digital Twin - Microclimate Zone Alpha</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="twin-info">
+            <p><strong>Location:</strong> Southeast Grid Sector</p>
+            <p><strong>Zone ID:</strong> MC-ALPHA-001</p>
+            <p><strong>Active Sensors:</strong> <span id="twin-sensor-count">3</span></p>
+          </div>
+          
+          <div class="twin-metrics">
+            <div class="metric-card">
+              <h4>Zone Power Output</h4>
+              <p class="metric-value" id="twin-power">-- MW</p>
+            </div>
+            <div class="metric-card">
+              <h4>Zone Temperature</h4>
+              <p class="metric-value" id="twin-temp">-- °C</p>
+            </div>
+            <div class="metric-card">
+              <h4>Zone Status</h4>
+              <p class="metric-value" id="twin-status">Normal</p>
+            </div>
+            <div class="metric-card">
+              <h4>Local Weather Impact</h4>
+              <p class="metric-value" id="twin-weather">-- %</p>
+            </div>
+          </div>
+
+          <div class="twin-sensors">
+            <h3>Active Sensors in Zone</h3>
+            <div class="twin-sensor-grid">
+              <div class="twin-sensor-card" id="twin-sensor-3">
+                <h4>Transformer C</h4>
+                <p class="twin-sensor-type">Power</p>
+                <p class="twin-sensor-value">-- MW</p>
+                <p class="twin-sensor-status">Status: --</p>
+              </div>
+              <div class="twin-sensor-card" id="twin-sensor-5">
+                <h4>Generator E</h4>
+                <p class="twin-sensor-type">Temperature</p>
+                <p class="twin-sensor-value">-- °C</p>
+                <p class="twin-sensor-status">Status: --</p>
+              </div>
+              <div class="twin-sensor-card renewable" id="twin-sensor-6">
+                <h4>Wind Farm F</h4>
+                <p class="twin-sensor-type">Power</p>
+                <p class="twin-sensor-value">-- MW</p>
+                <p class="twin-sensor-status">Status: --</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="twin-chart">
+            <canvas id="twinPowerChart"></canvas>
+          </div>
         </div>
       </div>
     </div>

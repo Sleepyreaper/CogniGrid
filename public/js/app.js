@@ -21,6 +21,10 @@ const AI_PRICE_THRESHOLD = 15.0; // Try to keep price below this (¢/kWh)
 let aiStartTime = null;
 let aiStartWeather = 0;
 
+// Digital twin variables
+let twinPowerData = [];
+const twinSensorIds = ['sensor-3', 'sensor-5', 'sensor-6']; // Microclimate zone sensors
+
 // Initialize charts
 const voltageChart = new Chart(document.getElementById('voltageChart'), {
   type: 'line',
@@ -66,6 +70,36 @@ const powerChart = new Chart(document.getElementById('powerChart'), {
       title: {
         display: true,
         text: 'Power Output Trend'
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: false
+      }
+    }
+  }
+});
+
+// Digital Twin Chart
+const twinPowerChart = new Chart(document.getElementById('twinPowerChart'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Zone Power (MW)',
+      data: [],
+      borderColor: 'rgb(99, 102, 241)',
+      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      tension: 0.3,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      title: {
+        display: true,
+        text: 'Microclimate Zone Power Trend'
       }
     },
     scales: {
@@ -156,7 +190,40 @@ updateEIAData(0, false, false);
 socket.on('telemetry', (data) => {
   updateSensorCard(data);
   updateCharts(data);
+  updateDigitalTwinData(data);
 });
+
+function updateDigitalTwinData(data) {
+  // Update digital twin modal if it's for zone sensors
+  if (twinSensorIds.includes(data.sensorId)) {
+    const twinCard = document.getElementById('twin-' + data.sensorId);
+    if (twinCard) {
+      twinCard.querySelector('.twin-sensor-value').textContent = `${data.value} ${data.unit}`;
+      twinCard.querySelector('.twin-sensor-status').textContent = `Status: ${data.status}`;
+      twinCard.querySelector('.twin-sensor-status').className = `twin-sensor-status ${data.status.toLowerCase()}`;
+    }
+    
+    // Update aggregated metrics
+    if (data.sensorId === 'sensor-3' && data.type === 'Power') {
+      const zonePower = data.value + (renewablesEnabled ? 5000 : 0); // Approximate zone power
+      document.getElementById('twin-power').textContent = Math.round(zonePower) + ' MW';
+      
+      // Update twin chart
+      const time = new Date(data.timestamp).toLocaleTimeString();
+      twinPowerData.push({ time, value: zonePower });
+      if (twinPowerData.length > maxDataPoints) {
+        twinPowerData.shift();
+      }
+      twinPowerChart.data.labels = twinPowerData.map(d => d.time);
+      twinPowerChart.data.datasets[0].data = twinPowerData.map(d => d.value);
+      twinPowerChart.update();
+    }
+    
+    if (data.sensorId === 'sensor-5' && data.type === 'Temperature') {
+      document.getElementById('twin-temp').textContent = data.value + ' °C';
+    }
+  }
+}
 
 // Listen for system status updates
 socket.on('systemStatus', (status) => {
@@ -245,6 +312,45 @@ document.getElementById('ai-toggle').addEventListener('change', (e) => {
     stopAIAutomation();
   }
 });
+
+// Digital Twin Modal Controls
+const digitalTwinModal = document.getElementById('digital-twin-modal');
+const digitalTwinBtn = document.getElementById('digital-twin-btn');
+const closeModal = document.querySelector('.close-modal');
+
+digitalTwinBtn.addEventListener('click', () => {
+  digitalTwinModal.style.display = 'block';
+  updateDigitalTwinView();
+});
+
+closeModal.addEventListener('click', () => {
+  digitalTwinModal.style.display = 'none';
+});
+
+window.addEventListener('click', (e) => {
+  if (e.target === digitalTwinModal) {
+    digitalTwinModal.style.display = 'none';
+  }
+});
+
+function updateDigitalTwinView() {
+  // Update sensor count
+  document.getElementById('twin-sensor-count').textContent = twinSensorIds.length;
+  document.getElementById('twin-weather').textContent = weatherLevel + '%';
+  
+  // Update zone status based on weather
+  const statusElement = document.getElementById('twin-status');
+  if (weatherLevel < 20) {
+    statusElement.textContent = 'Normal';
+    statusElement.style.color = '#28a745';
+  } else if (weatherLevel < 50) {
+    statusElement.textContent = 'Elevated';
+    statusElement.style.color = '#ffc107';
+  } else {
+    statusElement.textContent = 'Critical';
+    statusElement.style.color = '#dc3545';
+  }
+}
 
 function startAIAutomation() {
   aiStartTime = Date.now();
