@@ -2,6 +2,9 @@
 
 A fake web application that simulates an electrical grid operations dashboard with real-time IoT sensor telemetry data.
 
+<img width="2922" height="1756" alt="image" src="https://github.com/user-attachments/assets/cd71ad34-8c7e-47ee-9162-3eb1b0060610" />
+
+
 ## Features
 
 - Real-time display of simulated IoT sensor data from various grid components
